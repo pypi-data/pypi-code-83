@@ -1,0 +1,20 @@
+from muscad import Cube, E, EE, Part, Square, Circle
+
+
+class Fillet(Part):
+    def init(self, radius=4):
+        self.box = Square(radius + EE, radius + EE).align(
+            back=-E, left=-E, center_z=0
+        )
+        self.fillet = ~Circle(d=radius * 2)
+
+
+class Chamfer(Part):
+    def init(self, length, radius=4):
+        self.box = Cube(radius, radius, length).align(
+            back=0, left=0, center_z=0
+        )
+        chamfer_width = ((radius ** 2) * 2) ** 0.5
+        self.chamfer = ~Cube(
+            chamfer_width, chamfer_width, length + 2
+        ).z_rotate(45)
