@@ -1,0 +1,2 @@
+class LearningError(Exception):
+    pass
