@@ -1,0 +1,72 @@
+from distutils.core import setup
+import setuptools  # noqa
+
+"""
+see https://docs.python.org/3/distutils/setupscript.html
+"""
+# from os import path
+# this_directory = path.abspath(path.dirname(__file__))
+# with open(path.join(this_directory, './README.md'), encoding='utf-8') as f:
+#     long_description = f.read()
+
+try:
+    import pypandoc
+    long_description = pypandoc.convert('README.md', 'rst')
+except(IOError, ImportError):
+    long_description = open('README.md').read()
+
+setup(
+    name='wizzi_utils',
+    packages=[  # main package and sub packages
+        'wizzi_utils',  # package name
+        'wizzi_utils/misc',  # main sub package
+        'wizzi_utils/misc/test',
+        'wizzi_utils/algorithms',
+        'wizzi_utils/algorithms/test',
+        'wizzi_utils/coreset',
+        'wizzi_utils/coreset/test',
+        'wizzi_utils/json',
+        'wizzi_utils/json/test',
+        'wizzi_utils/open_cv',
+        'wizzi_utils/open_cv/test',
+        'wizzi_utils/pyplot',
+        'wizzi_utils/pyplot/test',
+        'wizzi_utils/socket',
+        'wizzi_utils/socket/test',
+        'wizzi_utils/torch',
+        'wizzi_utils/torch/test',
+    ],
+    version='6.0.2',
+    license='MIT',  # https://help.github.com/articles/licensing-a-repository
+    description='Handy Tools for Developers',
+    long_description=long_description,
+    author='Gilad Eini',
+    author_email='giladEini@gmail.com',
+    url='https://github.com/2easy4wizzi/2021wizzi_utils',  # link to github
+    # TODO update on new release
+    download_url='https://github.com/2easy4wizzi/2021wizzi_utils/archive/refs/tags/v_6.0.2.tar.gz',
+    keywords=[  # Keywords that define your package best
+        'misc tools',
+        'common algorithms',
+        'coreset tools',
+        'json tools',
+        'open cv tools',
+        'pyplot tools',
+        'socket tools',
+        'torch tools',
+    ],
+    install_requires=[  # TODO add pip installed libraries
+        'datetime',
+        'typing',
+        'numpy',
+    ],
+    classifiers=[
+        # Chose either "3 - Alpha", "4 - Beta" or "5 - Production/Stable" as the current state of your package
+        'Development Status :: 4 - Beta',
+        'Intended Audience :: Developers',  # Define that your audience are developers
+        'Topic :: Software Development :: Build Tools',
+        'License :: OSI Approved :: MIT License',  # Again, pick a license
+        'Programming Language :: Python :: 3.6'
+    ],
+    platforms='windows',
+)
