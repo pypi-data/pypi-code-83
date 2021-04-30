@@ -1,0 +1,13 @@
+from typing import Union, Protocol, Tuple, Any
+import numpy as np
+import pandas as pd
+
+Condition = Tuple[str, Any]
+Pattern = Tuple[Condition]
+DataSeries = Union[np.array, pd.Series]
+
+class ScikitModel(Protocol):
+    def fit(self, X, y, sample_weight=None): ...
+    def predict(self, X): ...
+    def score(self, X, y, sample_weight=None): ...
+    def set_params(self, **params): ...
