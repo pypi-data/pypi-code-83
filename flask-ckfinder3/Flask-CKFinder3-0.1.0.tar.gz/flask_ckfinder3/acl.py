@@ -1,0 +1,15 @@
+from enum import IntFlag
+
+
+class CKFAcl(IntFlag):
+
+    FOLDER_VIEW = 1
+    FOLDER_CREATE = 2
+    FOLDER_RENAME = 4
+    FOLDER_DELETE = 8
+    FILE_VIEW = 16
+    FILE_CREATE = 32
+    FILE_RENAME = 64
+    FILE_DELETE = 128
+    IMAGE_RESIZE = 256
+    IMAGE_RESIZE_CUSTOM = 512
