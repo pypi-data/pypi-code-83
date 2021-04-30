@@ -1,0 +1,82 @@
+from ..Internal.Core import Core
+from ..Internal.CommandsGroup import CommandsGroup
+from ..Internal.RepeatedCapability import RepeatedCapability
+from .. import repcap
+
+
+# noinspection PyPep8Naming,PyAttributeOutsideInit,SpellCheckingInspection
+class Trigger:
+	"""Trigger commands group definition. 14 total commands, 6 Sub-groups, 0 group commands
+	Repeated Capability: InputIx, default value after init: InputIx.Nr1"""
+
+	def __init__(self, core: Core, parent):
+		self._core = core
+		self._base = CommandsGroup("trigger", core, parent)
+		self._base.rep_cap = RepeatedCapability(self._base.group_name, 'repcap_inputIx_get', 'repcap_inputIx_set', repcap.InputIx.Nr1)
+
+	def repcap_inputIx_set(self, enum_value: repcap.InputIx) -> None:
+		"""Repeated Capability default value numeric suffix.
+		This value is used, if you do not explicitely set it in the child set/get methods, or if you leave it to InputIx.Default
+		Default value after init: InputIx.Nr1"""
+		self._base.set_repcap_enum_value(enum_value)
+
+	def repcap_inputIx_get(self) -> repcap.InputIx:
+		"""Returns the current default repeated capability for the child set/get methods"""
+		# noinspection PyTypeChecker
+		return self._base.get_repcap_enum_value()
+
+	@property
+	def fpSweep(self):
+		"""fpSweep commands group. 1 Sub-classes, 0 commands."""
+		if not hasattr(self, '_fpSweep'):
+			from .Trigger_.FpSweep import FpSweep
+			self._fpSweep = FpSweep(self._core, self._base)
+		return self._fpSweep
+
+	@property
+	def freqSweep(self):
+		"""freqSweep commands group. 2 Sub-classes, 0 commands."""
+		if not hasattr(self, '_freqSweep'):
+			from .Trigger_.FreqSweep import FreqSweep
+			self._freqSweep = FreqSweep(self._core, self._base)
+		return self._freqSweep
+
+	@property
+	def lffSweep(self):
+		"""lffSweep commands group. 2 Sub-classes, 1 commands."""
+		if not hasattr(self, '_lffSweep'):
+			from .Trigger_.LffSweep import LffSweep
+			self._lffSweep = LffSweep(self._core, self._base)
+		return self._lffSweep
+
+	@property
+	def listPy(self):
+		"""listPy commands group. 1 Sub-classes, 0 commands."""
+		if not hasattr(self, '_listPy'):
+			from .Trigger_.ListPy import ListPy
+			self._listPy = ListPy(self._core, self._base)
+		return self._listPy
+
+	@property
+	def psweep(self):
+		"""psweep commands group. 2 Sub-classes, 0 commands."""
+		if not hasattr(self, '_psweep'):
+			from .Trigger_.Psweep import Psweep
+			self._psweep = Psweep(self._core, self._base)
+		return self._psweep
+
+	@property
+	def sweep(self):
+		"""sweep commands group. 2 Sub-classes, 0 commands."""
+		if not hasattr(self, '_sweep'):
+			from .Trigger_.Sweep import Sweep
+			self._sweep = Sweep(self._core, self._base)
+		return self._sweep
+
+	def clone(self) -> 'Trigger':
+		"""Clones the group by creating new object from it and its whole existing sub-groups
+		Also copies all the existing default Repeated Capabilities setting,
+		which you can change independently without affecting the original group"""
+		new_group = Trigger(self._core, self._base.parent)
+		self._base.synchronize_repcaps(new_group)
+		return new_group
