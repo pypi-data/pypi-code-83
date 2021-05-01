@@ -1,0 +1,1 @@
+MIDDLEWARE = ['pythonapm.contrib.django.test_wrapper.MockDjangoMiddlewareHandler']
