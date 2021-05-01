@@ -1,0 +1,149 @@
+# encoding: utf-8
+#
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http:# mozilla.org/MPL/2.0/.
+#
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
+#
+
+from __future__ import absolute_import, division, unicode_literals
+
+from jx_base.expressions._utils import builtin_ops, operators
+from jx_base.expressions.and_op import AndOp
+from jx_base.expressions.coalesce_op import CoalesceOp
+from jx_base.expressions.expression import Expression
+from jx_base.expressions.false_op import FALSE
+from jx_base.expressions.literal import Literal, ZERO, ONE, is_literal
+from jx_base.expressions.null_op import NULL
+from jx_base.expressions.or_op import OrOp
+from jx_base.expressions.true_op import TRUE
+from jx_base.expressions.when_op import WhenOp
+from mo_dots import coalesce
+from mo_json import NUMBER
+
+
+class BaseMultiOp(Expression):
+    has_simple_form = True
+    data_type = NUMBER
+    op = None
+    zero = None
+
+    def __init__(self, terms, **clauses):
+        Expression.__init__(self, terms)
+        self.terms = terms
+        self.default = coalesce(clauses.get("default"), NULL)
+        self.nulls = coalesce(
+            clauses.get("nulls"), FALSE
+        )  # nulls==True WILL HAVE OP RETURN null ONLY IF ALL OPERANDS ARE null
+
+    def __data__(self):
+        return {
+            self.op: [t.__data__() for t in self.terms],
+            "default": self.default,
+            "nulls": self.nulls,
+        }
+
+    def __call__(self, row=None, rownum=None, rows=None):
+        op = builtin_ops[self.op]
+        terms = [t(row, rownum, rows) for t in self.terms]
+        if self.nulls(row, rownum, rows):
+            acc = None
+            for t in terms:
+                if t == None:
+                    continue
+                if acc is None:
+                    acc = self.zero
+                acc = op(acc, t)
+            if acc is None:
+                return self.default(row, rownum, rows)
+            else:
+                return acc
+        else:
+            acc = self.zero
+            for t in terms:
+                if t == None:
+                    return self.default(row, rownum, rows)
+                acc = op(acc, t)
+            return acc
+
+    def vars(self):
+        output = set()
+        for t in self.terms:
+            output |= t.vars()
+        return output
+
+    def map(self, map_):
+        return self.__class__(
+            [t.map(map_) for t in self.terms],
+            **{"default": self.default, "nulls": self.nulls}
+        )
+
+    def missing(self, lang):
+        if self.nulls:
+            if self.default is NULL:
+                return AndOp([t.missing(lang) for t in self.terms])
+            else:
+                return TRUE
+        else:
+            if self.default is NULL:
+                return OrOp([t.missing(lang) for t in self.terms])
+            else:
+                return FALSE
+
+    def exists(self):
+        if self.nulls:
+            return OrOp([t.exists() for t in self.terms])
+        else:
+            return AndOp([t.exists() for t in self.terms])
+
+    def partial_eval(self, lang):
+        acc = None
+        terms = []
+        for t in self.terms:
+            simple = t.partial_eval(lang)
+            if simple is NULL:
+                pass
+            elif is_literal(simple):
+                if acc is None:
+                    acc = simple.value
+                else:
+                    acc = builtin_ops[self.op](acc, simple.value)
+            else:
+                terms.append(simple)
+
+        lang = self.lang
+        if len(terms) == 0:
+            if acc == None:
+                return self.default.partial_eval(lang)
+            else:
+                return Literal(acc)
+        elif self.nulls:
+            # DECISIVE
+            if acc is not None:
+                terms.append(Literal(acc))
+
+            output = WhenOp(
+                AndOp([t.missing(lang) for t in terms]),
+                **{
+                    "then": self.default,
+                    "else": operators["basic." + self.op]([
+                        CoalesceOp([t, _jx_identity[self.op]]) for t in terms
+                    ]),
+                }
+            ).partial_eval(lang)
+        else:
+            # CONSERVATIVE
+            if acc is not None:
+                terms.append(Literal(acc))
+
+            output = WhenOp(
+                OrOp([t.missing(lang) for t in terms]),
+                **{"then": self.default, "else": operators["basic." + self.op](terms),}
+            ).partial_eval(lang)
+
+        return output
+
+
+_jx_identity = {"add": ZERO, "mul": ONE}
