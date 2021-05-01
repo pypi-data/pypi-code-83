@@ -1,0 +1,27 @@
+from distutils.core import setup
+setup(
+  name = 'easy_mailer',         # How you named your package folder (MyLib)
+  packages = ['easy_mailer'],   # Chose the same as "name"
+  #version = '',      # Start with a small number and increase it with every change you make
+  license='MIT',        # Chose a license from here: https://help.github.com/articles/licensing-a-repository
+  description = 'Easy Mailer lets one use popular mailing services like outlook, gmail to send\
+  items or mail via python code.',   # Give a short description about your library
+  author = 'jnano',                   # Type in your name
+  author_email = 'jnanesh4courses@gmail.com',      # Type in your E-Mail
+  url = 'https://github.com/JnaneshPrabhu/easy-mailer',   # Provide either the link to your github or to your website
+  download_url = 'https://github.com/JnaneshPrabhu/easy-mailer/archive/refs/tags/v_01.tar.gz',    # I explain this later on
+  keywords = ['Outlook', 'Mail', 'Python3','Python2'],   # Keywords that define your package best
+  install_requires=[           
+          
+      ],
+  classifiers=[
+    'Development Status :: 3 - Alpha',      # Chose either "3 - Alpha", "4 - Beta" or "5 - Production/Stable" as the current state of your package
+    'Intended Audience :: Developers',      # Define that your audience are developers
+    'Topic :: Software Development :: Build Tools',
+    'License :: OSI Approved :: MIT License',   # Again, pick a license
+    'Programming Language :: Python :: 3',      #Specify which pyhton versions that you want to support
+    'Programming Language :: Python :: 3.4',
+    'Programming Language :: Python :: 3.5',
+    'Programming Language :: Python :: 3.6',
+  ],
+)
