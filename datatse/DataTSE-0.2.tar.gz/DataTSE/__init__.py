@@ -1,0 +1,1 @@
+from .Download import votos_secao_geral, votos_secao_candidato, votos_munzona_candidato, votos_munzona_geral
