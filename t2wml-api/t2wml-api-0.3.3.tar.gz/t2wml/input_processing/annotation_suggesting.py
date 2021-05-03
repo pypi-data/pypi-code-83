@@ -1,0 +1,258 @@
+from collections import Counter
+import numpy as np
+from t2wml.input_processing.utils import string_is_valid
+from t2wml.wikification.country_wikifier_cache import countries
+from t2wml.utils.date_utils import parse_datetime
+from t2wml.parsing.cleaning_functions import make_numeric
+
+def get_types(cell_content):
+    cell_content=str(cell_content).strip()
+    is_country = cell_content in countries or cell_content.lower() in countries
+    if make_numeric(cell_content) != "" and cell_content[0] not in ["P", "Q"]:
+        is_numeric=True
+    else:
+        is_numeric=False
+    try:
+        parse_datetime(cell_content)
+        is_date=True
+    except:
+        is_date=False
+    return is_country, is_numeric, is_date
+
+
+def annotation_suggester(sheet, selection, annotation_blocks_array):
+    already_has_subject=False
+    already_has_var=False
+    for block in annotation_blocks_array:
+        if block["role"]=="mainSubject":
+            already_has_subject=True
+        if block["role"]=="dependentVar":
+            already_has_var=True
+
+    (x1, y1), (x2, y2) = (selection["x1"]-1, selection["y1"]-1), (selection["x2"]-1, selection["y2"]-1)
+    first_cell=sheet[y1, x1]
+    is_country, is_numeric, is_date=get_types(first_cell)
+
+    children={}
+
+    if is_country:
+        roles=[]
+        if not already_has_subject:
+            roles.append("mainSubject")
+        roles.append("qualifier")
+        if not already_has_var:
+            roles.append("dependentVar")
+        
+        types=["string", "wikibaseitem"]
+        if is_numeric:
+            types.append("quantity")
+    
+    elif is_date:
+        roles=["qualifier"]
+        if not already_has_var:
+            roles.append("dependentVar")
+        types=["time"]
+        if is_numeric:
+            types.append("quantity")
+        types.append("string")
+        children["property"]="P585"
+    
+    elif is_numeric:
+        roles=["qualifier"]
+        if not already_has_var:
+            roles.insert(0, "dependentVar")
+        types=["quantity", "string"]
+
+    else:
+        if x1==x2 and y1==y2: #single cell selection, default to property
+            roles= ["property", "qualifier", "dependentVar", "mainSubject", "unit"]
+        else: #all else, default to qualifier
+            roles= ["qualifier", "property", "dependentVar", "mainSubject", "unit"]
+        if already_has_var:
+            roles.remove("dependentVar")
+        if already_has_subject:
+            roles.remove("mainSubject")
+        types= ["string", "wikibaseitem"]
+
+    
+    response= { 
+        "roles": roles,
+        "types": types,
+        "children": children
+    }
+
+    return response
+
+
+class HistogramSelection:
+    @staticmethod
+    def block_finder(sheet):
+        vertical_numbers=Counter()
+        horizontal_numbers=Counter()
+        horizontal_dates=Counter()
+        vertical_dates=Counter()
+        horizontal_countries=Counter()
+        vertical_countries=Counter()
+        blanks=set()
+        numbers=set()
+        dates=set()
+        countries=set()
+
+        for row in range(sheet.row_len):
+            for col in range(sheet.col_len):
+                content = sheet[row][col]
+                if not string_is_valid(content):
+                    blanks.add((row, col))
+                    continue
+                is_country, is_numeric, is_date=get_types(content)
+                if is_country:
+                    if is_numeric: #for now override "numeric" countries
+                        vertical_numbers[col]+=1
+                        horizontal_numbers[row]+=1
+                        numbers.add((row, col))
+                    else:
+                        horizontal_countries[row]+=1
+                        vertical_countries[col]+=1
+                        countries.add((row, col))
+                elif is_date:
+                    horizontal_dates[row]+=1
+                    vertical_dates[col]+=1
+                    dates.add((row, col))
+                    if is_numeric:
+                        vertical_numbers[col]+=1
+                        horizontal_numbers[row]+=1
+                        numbers.add((row, col))
+                elif is_numeric:
+                    vertical_numbers[col]+=1
+                    horizontal_numbers[row]+=1
+                    numbers.add((row, col))
+        
+        date_index, date_is_vertical= HistogramSelection.get_most_common(horizontal_dates, vertical_dates)
+        country_index, country_is_vertical= HistogramSelection.get_most_common(horizontal_countries, vertical_countries)
+
+        date_block=HistogramSelection.get_1d_block(sheet, date_index, date_is_vertical, dates, blanks)
+        country_block=HistogramSelection.get_1d_block(sheet, country_index, country_is_vertical, countries, blanks)
+        number_block=HistogramSelection.get_2d_block(sheet, vertical_numbers, horizontal_numbers, numbers, blanks, [date_block, country_block])
+        
+        date_block=HistogramSelection.normalize_to_selection(date_block, number_block)
+        country_block=HistogramSelection.normalize_to_selection(country_block, number_block)
+
+        return HistogramSelection._create_annotations(date_block, country_block, number_block)
+        
+    def normalize_to_selection(selection, normalize_against):
+        if not normalize_against or not selection:
+            return selection
+        (nr1, nc1), (nr2, nc2) = normalize_against
+        (r1, c1),(r2, c2) = selection
+        if r1==r2 and c1!=c2: #row
+            return (r1, nc1), (r2, nc2)
+        if c1==c2 and r1!=r2: #column
+            return (nr1, c1),(nr2, c2)
+        return selection
+    
+    def _create_annotations(date_block, country_block, number_block):
+        annotations=[]
+        if date_block:
+            annotations.append({
+                    "selection":dict(x1=date_block[0][1]+1, y1=date_block[0][0]+1, x2= date_block[1][1]+1, y2=date_block[1][0]+1),
+                    "role":"qualifier",
+                    "type": "time",
+                    "property": "P585"
+            })
+
+        if country_block:
+            annotations.append({
+                    "selection":dict(x1=country_block[0][1]+1, y1=country_block[0][0]+1, x2= country_block[1][1]+1, y2=country_block[1][0]+1),
+                    "role":"mainSubject",
+                    "type": "wikibaseitem",
+            })
+        if number_block:
+            annotations.append({
+                    "selection":dict(x1=number_block[0][1]+1, y1=number_block[0][0]+1, x2= number_block[1][1]+1, y2=number_block[1][0]+1),
+                    "role":"dependentVar",
+                    "type": "quantity",
+                    "property":"P1114"
+            })
+
+        return annotations
+
+    def get_most_common(horizontal, vertical):
+        if horizontal:
+            h_index, h_count = horizontal.most_common(1)[0]
+        else:
+            h_count=0
+        if vertical:
+            v_index, v_count = vertical.most_common(1)[0]
+        else:
+            v_count=0
+        if v_count==h_count==0:
+            return None, None
+        if h_count>v_count:
+            return h_index, False
+        return v_index, True
+    
+    def get_1d_block(sheet, index, is_vertical, block_set, blank_set):
+        if index is None:
+            return None
+        if is_vertical:
+            column=index
+            for initial_row in range(sheet.row_len):
+                if (initial_row, column) in block_set:
+                    break
+            
+            for row in range(initial_row, sheet.row_len):
+                if not ((row, column) in block_set or (row, column) in blank_set):
+                    break
+            
+            #remove blanks
+            final_row=row
+            for final_row in range(row, 0, -1):
+                if (final_row, column) in block_set:
+                    break
+            
+            return ((initial_row, column), (final_row, column))
+        
+        #horizontal:
+        row=index
+        for initial_column in range(sheet.col_len):
+            if (row, initial_column) in block_set:
+                break
+        for column in range(initial_column, sheet.col_len):
+            if not((row, column) in block_set or (row, column) in blank_set):
+                break
+        for final_column in range(column, 0, -1):
+            if (row, final_column) in block_set:
+                break
+        return ((row, initial_column), (row, final_column))
+
+    def get_2d_block(sheet, vertical_count, horizontal_count, block_set, blank_set, blocks_to_avoid):
+        for block in blocks_to_avoid:
+            if block:
+                (start_r, start_c), (end_r, end_c) = block
+                for r in range(start_r, end_r+1):
+                    for c in range(start_c, end_c+1):
+                        if (r,c) in block_set:
+                            block_set.remove((r,c))
+                            vertical_count[c]-=1
+                            horizontal_count[r]-=1
+
+        contiguous_columns=dict()
+        start_i=0
+        while start_i<sheet.col_len:
+            contiguous_columns[start_i]=dict(count=0)
+            for j in range(start_i, sheet.col_len+1):
+                if vertical_count[j]:
+                    contiguous_columns[start_i]["count"]+=vertical_count[j]
+                else:
+                    break
+            contiguous_columns[start_i]["finish"]=j-1
+            start_i=j+1
+        
+        start_column=max(contiguous_columns, key=lambda p: contiguous_columns[p]["count"])
+        end_column=contiguous_columns[start_column]["finish"]
+        ((initial_row, column), (final_row, column))=HistogramSelection.get_1d_block(sheet, start_column, True, block_set, blank_set)
+        return (initial_row, start_column), (final_row, end_column)
+            
+
+def block_finder(sheet): #convenience function
+    return HistogramSelection.block_finder(sheet)
