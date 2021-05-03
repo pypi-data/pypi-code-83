@@ -1,0 +1,53 @@
+import os
+import sys
+from setuptools import setup
+
+VERSION = '0.2'
+
+if sys.argv[-1] == 'publish':
+    if os.system("pip freeze | grep wheel"):
+        print("wheel not installed.\nUse `pip install wheel`.\nExiting.")
+        sys.exit()
+    if os.system("pip freeze | grep twine"):
+        print("twine not installed.\nUse `pip install twine`.\nExiting.")
+        sys.exit()
+    os.system("python setup.py sdist bdist_wheel")
+    os.system("twine upload dist/*")
+    print("You probably want to also tag the version now:")
+    print("  git tag -a {0} -m 'version {0}'".format(VERSION))
+    print("  git push --tags")
+    sys.exit()
+
+setup(
+    name="mkdocs_asy",
+    version=VERSION,
+    py_modules=["mkdocs_asy"],
+    install_requires=['Markdown>=2.3.1'],
+    author="Rodrigo SCHWENCKE",
+    author_email="dev.hopper@lyceeperier.fr",
+    description="Render Asymptote graphs in Mkdocs, as inline SVGs and PNGs, directly from your Markdown (python3 version)",
+    long_description_content_type="text/markdown",
+    long_description="""Inspired by
+
+* [Rodrigo SCHWENCKE > mkdocs-graphviz](https://gitlab.com/rodrigo.schwencke/mkdocs-graphviz)
+"""
+,
+    license="GPL3",
+    url="https://gitlab.com/rodrigo.schwencke/mkdocs-asy.git",
+    classifiers=[
+        'Development Status :: 5 - Production/Stable',
+        'Intended Audience :: Developers',
+        'Topic :: Documentation',
+        'Topic :: Text Processing',
+        'License :: OSI Approved :: MIT License',
+        # Specify the Python versions you support here. In particular, ensure
+        # that you indicate whether you support Python 2, Python 3 or both.
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+    ],
+)
