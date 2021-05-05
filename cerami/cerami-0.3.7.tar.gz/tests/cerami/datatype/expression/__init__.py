@@ -1,0 +1,4 @@
+from .base_expression_test import TestBaseExpression
+from .list_append_expression_test import TestListAppendExpression
+from .in_expression_test import TestInExpression
+from .contains_expression_test import TestContainsExpression
