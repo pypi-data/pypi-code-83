@@ -1,0 +1,1 @@
+from .consulta_ruc import ConsultaRuc
