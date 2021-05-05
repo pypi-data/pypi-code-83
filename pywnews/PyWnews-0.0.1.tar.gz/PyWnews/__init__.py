@@ -1,0 +1,1 @@
+from PyWnews.pynews import wnews
