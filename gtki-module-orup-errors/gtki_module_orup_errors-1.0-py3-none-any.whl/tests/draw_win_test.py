@@ -1,0 +1,31 @@
+from tkinter import *
+from orup_errors.main import OrupErrorsOperator
+from orup_errors.tests.args_test import args
+import os
+
+""" Тестируем отрисовку """
+# Определяем пути
+dirname = os.getcwd()
+imgs_dir = os.path.join(dirname, 'imgs')
+
+# Создаем всякие полезные ништяки
+root = Tk()
+canvas = Canvas(root, bg='black')
+
+# Создаем фото для фона
+brutto_bg_png = os.path.join(imgs_dir, 'redbg.png')
+tara_bg_png = os.path.join(imgs_dir, 'redbgORupEx.png')
+brutto_img = PhotoImage(file=brutto_bg_png)
+tara_img = PhotoImage(file=tara_bg_png)
+
+# Присвоим их списку, что бы сборщик мусора не забрал
+imgs = [brutto_img, tara_img]
+
+# Ну и главное - делаем  экземпляр проверяльшика, передаем ему все данные
+operator = OrupErrorsOperator(canvas, imgs[0], imgs[1], xpos=100, ypos=100, text_font="'Roboto' 25", **args)
+canvas.pack(fill=BOTH, expand=YES)
+
+# Кнопочку для вызова туда же
+Button(root, text='Show Error', bg='white', command=lambda: operator.check_brutto_orup(operator.all_args)).pack()
+
+root.mainloop()
