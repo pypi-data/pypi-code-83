@@ -1,0 +1,57 @@
+from unittest.mock import patch
+import json
+from tests.utils import fixtures_path, fake_new_input, order_list
+
+from hestia_earth.models.pooreNemecek2018.organicFertilizerToKgOrMass import run, _should_run
+
+class_path = 'hestia_earth.models.pooreNemecek2018.organicFertilizerToKgOrMass'
+fixtures_folder = f"{fixtures_path}/pooreNemecek2018/organicFertilizerToKgOrMass"
+
+
+@patch(f"{class_path}.node_exists")
+def test_should_run(mock_node_exists):
+    # no inputs => no run
+    inputs = []
+    assert _should_run(inputs) == []
+
+    term_id = 'term'
+    inputs.append({
+        'term': {
+            '@id': term_id + 'AsN'
+        },
+        'value': 0.00208
+    })
+
+    # with input and non-existing KgMass => no run
+    mock_node_exists.return_value = True
+    assert _should_run(inputs) == [term_id]
+
+    # with input and existing KgMass => run
+    mock_node_exists.return_value = False
+    assert _should_run(inputs) == []
+
+
+def fake_node_exists(id: str):
+    return id in [
+        'beefCattleSolidManureFreshAsN', 'beefCattleSolidManureFreshKgMass',
+        'manureFreshAsN', 'manureFreshKgMass'
+    ]
+
+
+def fake_find_term_property(term_id, *args):
+    return {'value': 0.52 if term_id == 'beefCattleSolidManureFreshKgMass' else 0.529724771}
+
+
+@patch(f"{class_path}.find_term_property", side_effect=fake_find_term_property)
+@patch(f"{class_path}.node_exists", side_effect=fake_node_exists)
+@patch(f"{class_path}._new_input", side_effect=fake_new_input)
+def test_run(*args):
+    # cycle with an organic fertiliser => Iranian Hazelnut example
+    with open(f"{fixtures_folder}/cycle.jsonld", encoding='utf-8') as f:
+        cycle = json.load(f)
+
+    with open(f"{fixtures_folder}/result.jsonld", encoding='utf-8') as f:
+        expected = json.load(f)
+
+    value = run(cycle)
+    assert order_list(value) == order_list(expected)
